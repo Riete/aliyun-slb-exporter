@@ -45,6 +45,12 @@ func (s *SlbExporter) GetInstance() {
 func (s *SlbExporter) InitGauge() {
 	s.NewClient()
 	s.GetInstance()
+	go func() {
+		for {
+			time.Sleep(5 * time.Minute)
+			s.GetInstance()
+		}
+	}()
 	s.metrics = map[string]*prometheus.GaugeVec{}
 	for k, v := range Layer4And7Metrics {
 		s.metrics[k] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
