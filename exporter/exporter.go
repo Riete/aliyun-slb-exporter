@@ -92,13 +92,13 @@ func (s *SlbExporter) GetMetric(metricName string) {
 	}
 }
 
-func (s SlbExporter) Describe(ch chan<- *prometheus.Desc) {
+func (s *SlbExporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, v := range s.metrics {
 		v.Describe(ch)
 	}
 }
 
-func (s SlbExporter) Collect(ch chan<- prometheus.Metric) {
+func (s *SlbExporter) Collect(ch chan<- prometheus.Metric) {
 	for m := range Layer4And7Metrics {
 		s.GetMetric(m)
 		for _, v := range s.DataPoints {
