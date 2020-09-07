@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
@@ -11,6 +12,16 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/slb"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+var sleep = false
+
+func wakeup() {
+	lock := sync.RWMutex{}
+	lock.Lock()
+	time.Sleep(time.Minute * time.Duration(1))
+	sleep = false
+	lock.Unlock()
+}
 
 func (s *SlbExporter) NewClient() {
 	client, err := cms.NewClientWithAccessKey(regionId, accessKeyId, accessKeySecret)
@@ -99,18 +110,22 @@ func (s *SlbExporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (s *SlbExporter) Collect(ch chan<- prometheus.Metric) {
-	for m := range Layer4And7Metrics {
-		s.GetMetric(m)
-		for _, v := range s.DataPoints {
-			s.metrics[m].With(prometheus.Labels{
-				"instance_id":   v.InstanceId,
-				"instance_name": s.instances[v.InstanceId],
-				"vip":           v.Vip,
-				"protocol":      v.Protocol,
-				"port":          v.Port,
-			}).Set(v.Average)
+	if !sleep {
+		sleep = true
+		go wakeup()
+		for m := range Layer4And7Metrics {
+			s.GetMetric(m)
+			for _, v := range s.DataPoints {
+				s.metrics[m].With(prometheus.Labels{
+					"instance_id":   v.InstanceId,
+					"instance_name": s.instances[v.InstanceId],
+					"vip":           v.Vip,
+					"protocol":      v.Protocol,
+					"port":          v.Port,
+				}).Set(v.Average)
+			}
+			time.Sleep(34 * time.Millisecond)
 		}
-		time.Sleep(34 * time.Millisecond)
 	}
 	for _, m := range s.metrics {
 		m.Collect(ch)
